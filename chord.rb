@@ -1,27 +1,48 @@
 require 'openssl'
 
+KEYSPACE_SIZE = 2**160
+
+=begin
+def hash(key)
+  sha1 = OpenSSL::Digest::SHA1.new
+  str = sha1.digest key.to_s
+  hex_bytes = str.bytes.collect { |byte| "%02x" % byte }
+  hex = hex_bytes.join("")
+  OpenSSL::BN.new(hex, 16)
+end
+
+
+def generate_key
+  hash(Time.now.to_s)
+end
+=end
 class Node
-  @@sha1 = OpenSSL::Digest::SHA1.new
-  @@keyspace_size = 2**160
 
   attr_reader :id
   attr_reader :predecessor
+  attr_reader :successor
 
-  def initialize
-    @id = hash(Time.now.to_s)
-  end
-
-  def hash(key)
-    str = @@sha1.digest key.to_s
-    hex_bytes = str.bytes.collect { |byte| "%02x" % byte }
-    hex = hex_bytes.join("")
-    OpenSSL::BN.new(hex, 16)
+  def initialize(id)
+    @id = id
   end
 
   def diff(key)
-    key - @id % @@keyspace_size
+    (@id - key) % KEYSPACE_SIZE
   end
 
-  
+  def successor=(n)
+    @successor = n
+  end
+
+  def predecessor=(n)
+    @predecessor = n
+  end
+
+  def owns?(key)
+    if predecessor.nil?
+      return true
+    end
+      return diff(key) < @predecessor.diff(key)
+  end
   
 end
