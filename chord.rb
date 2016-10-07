@@ -16,14 +16,17 @@ def generate_key
   hash(Time.now.to_s)
 end
 =end
+
 class Node
 
   attr_reader :id
   attr_reader :predecessor
   attr_reader :successor
+  attr_reader :data
 
   def initialize(id)
     @id = id
+    @data = {}
   end
 
   def diff(key)
@@ -43,6 +46,22 @@ class Node
       return true
     end
       return diff(key) < @predecessor.diff(key)
+  end
+
+  def store(key, value)
+    if owns? key
+      data[key] = value
+    else
+      @successor.store(key, value)
+    end
+  end
+
+  def get(key)
+    if owns? key
+      data[key]
+    else
+      @successor.get(key)
+    end
   end
   
 end
