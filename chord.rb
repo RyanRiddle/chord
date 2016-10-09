@@ -1,6 +1,6 @@
 require 'openssl'
 
-KEYSPACE_SIZE = 2**160
+KEYSPACE_SIZE = 8 #2**160
 
 =begin
 def hash(key)
@@ -17,6 +17,32 @@ def generate_key
 end
 =end
 
+def difference(a, b)
+  (b - a) % KEYSPACE_SIZE
+end
+
+class Interval
+  attr_reader :first
+  attr_reader :last
+
+  def initialize(first, last)
+    @first = first
+    @last = last
+  end
+end
+
+class ClosedOpenInterval < Interval
+  def contains? (val)
+    difference(@first, val) < difference(@last, val)
+  end
+end
+
+class OpenClosedInterval < Interval
+  def contains? (val)
+    difference(val, @last) < difference(val, @first)
+  end
+end
+
 class Node
 
   attr_reader :id
@@ -29,9 +55,11 @@ class Node
     @data = {}
   end
 
+=begin
   def diff(key)
     (@id - key) % KEYSPACE_SIZE
   end
+=end
 
   def successor=(n)
     @successor = n
@@ -45,7 +73,11 @@ class Node
     if predecessor.nil?
       return true
     end
-      return diff(key) < @predecessor.diff(key)
+
+    r = OpenClosedInterval.new(@predecessor.id, @id)
+    r.contains? key
+
+    #return diff(key) < @predecessor.diff(key)
   end
 
   def store(key, value)
