@@ -1,6 +1,8 @@
 require 'openssl'
+require 'pry'
 
-KEYSPACE_SIZE = 8 #2**160
+M = 3
+KEYSPACE_SIZE = 2**M
 
 =begin
 def hash(key)
@@ -29,6 +31,10 @@ class Interval
     @first = first
     @last = last
   end
+
+  def display
+    print "(" + @first.to_s + ", " + @last.to_s + ")"
+  end
 end
 
 class ClosedOpenInterval < Interval
@@ -53,23 +59,44 @@ class OpenOpenInterval < Interval
 end
 
 class FingerEntry
-  attr_reader :start, :interval, :node
+  attr_reader :start, :interval
+  attr_accessor :node
   
   def initialize(start, finish, node)
     @start = start
     @interval = ClosedOpenInterval.new(start, finish)
     @node = node
   end
+
+  def display
+    print @start.to_s + " "
+    @interval.display
+    print " " + @node.id.to_s + "\n"
+  end
 end
 
 class Node
 
   attr_reader :id
+  attr_reader :predecessor
 
   def initialize(id)
     @id = id
     @data = {}
+
     @finger = []
+    for i in 0...M do
+      start = (@id + 2**i) % KEYSPACE_SIZE
+      finish = (@id + 2**(i+1)) % KEYSPACE_SIZE
+      @finger.push(FingerEntry.new(start, finish, self))
+    end
+  end
+
+  def print_fingers
+    @finger.each do |x|
+      x.display
+    end
+    nil
   end
 
   def successor
@@ -81,6 +108,7 @@ class Node
   end
 
   def predecessor=(n)
+    puts "set predecessor of " + self.id.to_s + " to " + n.id.to_s
     @predecessor = n
   end
 
@@ -88,16 +116,60 @@ class Node
     @finger.push(f)
   end
 
+  def join(n)
+    unless n.nil?
+      init_finger_table(n)
+      update_others()
+      else
+      @predecessor = self
+    end
+  end
+
+  def init_finger_table(n)
+    @finger[0].node = n.find_successor(@finger[0].start)
+    @predecessor = successor.predecessor
+    if successor == n
+      successor.predecessor = self
+    else
+      successor.predecessor= n
+    end
+    for i in 0...M-1 do
+      if (ClosedOpenInterval.new(@id, @finger[i].node.id).contains? @finger[i+1].start)
+        @finger[i+1].node = @finger[i].node
+      else
+        @finger[i+1].node = n.find_successor(@finger[i+1].start)
+      end
+    end
+  end
+
+  def update_others
+#    binding.pry
+    for i in 0...M
+      p = find_predecessor((@id - 2**i) % KEYSPACE_SIZE)
+      p.update_finger_table(self, i)
+    end
+  end
+
+  def update_finger_table(s, i)
+#    binding.pry
+    if ClosedOpenInterval.new(@id, @finger[i].node.id).contains? s.id
+      @finger[i].node = s
+      p = @predecessor
+      p.update_finger_table(s, i)
+    end
+  end 
+
   def find_successor(key)
     n = find_predecessor(key)
     n.successor
   end
 
   def find_predecessor(key)
+    #    binding.pry
     n = self
     r = OpenClosedInterval.new(n.id, n.successor.id)
 
-    while not r.contains? key
+    while not n.id == n.successor.id and not r.contains? key
       n = n.closest_preceding_finger(key)
       r = OpenClosedInterval.new(n.id, n.successor.id)
     end
@@ -145,7 +217,7 @@ class Node
   
 end
 
-
+=begin
 a = Node.new 0
 b = Node.new 1
 c = Node.new 3
@@ -165,3 +237,4 @@ b.add_finger FingerEntry.new(5, 1, a)
 c.add_finger FingerEntry.new(4, 5, a)
 c.add_finger FingerEntry.new(5, 7, a)
 c.add_finger FingerEntry.new(7, 3, a)
+=end
