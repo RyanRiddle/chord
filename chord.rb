@@ -39,13 +39,13 @@ end
 
 class ClosedOpenInterval < Interval
   def contains? (val)
-    difference(@first, val) < difference(@last, val)
+    difference(@first, val) <= difference(@last, val)
   end
 end
 
 class OpenClosedInterval < Interval
   def contains? (val)
-    difference(val, @last) < difference(val, @first)
+    difference(val, @last) <= difference(val, @first)
   end
 end
 
@@ -128,11 +128,7 @@ class Node
   def init_finger_table(n)
     @finger[0].node = n.find_successor(@finger[0].start)
     @predecessor = successor.predecessor
-    if successor == n
-      successor.predecessor = self
-    else
-      successor.predecessor= n
-    end
+
     for i in 0...M-1 do
       if (ClosedOpenInterval.new(@id, @finger[i].node.id).contains? @finger[i+1].start)
         @finger[i+1].node = @finger[i].node
@@ -140,19 +136,30 @@ class Node
         @finger[i+1].node = n.find_successor(@finger[i+1].start)
       end
     end
+
+    if successor == n
+      successor.predecessor = self
+    else
+      successor.predecessor= n
+    end
   end
 
   def update_others
 #    binding.pry
     for i in 0...M
       p = find_predecessor((@id - 2**i) % KEYSPACE_SIZE)
+      if (p == self)
+        p = p.predecessor
+      end
       p.update_finger_table(self, i)
     end
   end
 
   def update_finger_table(s, i)
 #    binding.pry
-    if ClosedOpenInterval.new(@id, @finger[i].node.id).contains? s.id
+    #    if ClosedOpenInterval.new(@id, @finger[i].node.id).contains? s.id
+    r = ClosedOpenInterval.new(@finger[i].start, @finger[i].node.id)
+    if r.contains? s.id and @finger[i].start != @finger[i].node.id
       @finger[i].node = s
       p = @predecessor
       p.update_finger_table(s, i)
@@ -169,7 +176,7 @@ class Node
     n = self
     r = OpenClosedInterval.new(n.id, n.successor.id)
 
-    while not n.id == n.successor.id and not r.contains? key
+    while not r.contains? key
       n = n.closest_preceding_finger(key)
       r = OpenClosedInterval.new(n.id, n.successor.id)
     end
