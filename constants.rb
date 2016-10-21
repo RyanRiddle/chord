@@ -1,0 +1,2 @@
+M = 3
+KEYSPACE_SIZE = 2**M

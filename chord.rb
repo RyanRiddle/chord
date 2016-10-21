@@ -1,8 +1,7 @@
+require_relative 'utils'
 require 'openssl'
 require 'pry'
 
-M = 3
-KEYSPACE_SIZE = 2**M
 
 =begin
 def hash(key)
@@ -18,45 +17,6 @@ def generate_key
   hash(Time.now.to_s)
 end
 =end
-
-def difference(a, b)
-  (b - a) % KEYSPACE_SIZE
-end
-
-class Interval
-  attr_reader :first
-  attr_reader :last
-
-  def initialize(first, last)
-    @first = first
-    @last = last
-  end
-
-  def display
-    print "(" + @first.to_s + ", " + @last.to_s + ")"
-  end
-end
-
-class ClosedOpenInterval < Interval
-  def contains? (val)
-    difference(@first, val) <= difference(@last, val)
-  end
-end
-
-class OpenClosedInterval < Interval
-  def contains? (val)
-    difference(val, @last) <= difference(val, @first)
-  end
-end
-
-class OpenOpenInterval < Interval
-  def contains? (val)
-    d1 = difference(@first, val)
-    d2 = difference(@last, val)
-
-    0 < d1 and 0 < d2 and d1 < d2
-  end
-end
 
 class FingerEntry
   attr_reader :start, :interval
@@ -178,6 +138,7 @@ class Node
 
     while not r.contains? key
       n = n.closest_preceding_finger(key)
+      puts n.id, n.successor.id
       r = OpenClosedInterval.new(n.id, n.successor.id)
     end
 
@@ -185,14 +146,16 @@ class Node
   end
 
   def closest_preceding_finger(key)
+    binding.pry
     r = OpenOpenInterval.new(@id, key)
     @finger.reverse_each do |f|
-      if (r.contains? f.node.id)
+      if (r.contains? f.node.id)# or @id == key)
         return f.node
       end
     end
 
-    return self
+    #    return self
+    return @predecessor
   end
       
 
