@@ -77,13 +77,50 @@ class Node
   end
 
   def join(n)
+    @predecessor = nil
+    if not n.nil?
+      @finger[0].node = n.find_successor(@id)
+    end
+=begin
+    stabilize_thread = Thread.new do
+      while true
+        sleep(1)
+        stabilize()
+        fix_fingers()
+      end
+    end
+=end
+
+=begin
     unless n.nil?
       init_finger_table(n)
       update_others()
       else
       @predecessor = self
     end
+=end
   end
+
+  def stabilize
+    x = successor.predecessor
+    r = OpenOpenInterval.new(@id, successor.id)
+    if not x.nil? and (r.contains? x.id or @id == successor.id)
+      @finger[0].node = x
+    end
+    successor.notify(self)
+  end
+
+  def notify(n)
+    if @predecessor.nil? or OpenOpenInterval.new(@predecessor.id, @id).contains? n.id
+      @predecessor = n
+    end
+  end
+
+  def fix_fingers
+    i = Random.rand(M)
+    @finger[i].node = find_successor(@finger[i].start)
+  end
+    
 
   def init_finger_table(n)
     @finger[0].node = n.find_successor(@finger[0].start)

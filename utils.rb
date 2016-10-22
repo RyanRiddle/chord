@@ -1,3 +1,5 @@
+require_relative 'constants'
+
 def difference(a, b)
   (b - a) % KEYSPACE_SIZE
 end
