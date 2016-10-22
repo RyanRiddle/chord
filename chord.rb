@@ -80,8 +80,10 @@ class Node
     @predecessor = nil
     if not n.nil?
       @finger[0].node = n.find_successor(@id)
+      stabilize
+      n.stabilize
     end
-=begin
+
     stabilize_thread = Thread.new do
       while true
         sleep(1)
@@ -89,7 +91,7 @@ class Node
         fix_fingers()
       end
     end
-=end
+
 
 =begin
     unless n.nil?
@@ -111,7 +113,7 @@ class Node
   end
 
   def notify(n)
-    if @predecessor.nil? or OpenOpenInterval.new(@predecessor.id, @id).contains? n.id
+    if (n != self and @predecessor.nil?) or OpenOpenInterval.new(@predecessor.id, @id).contains? n.id
       @predecessor = n
     end
   end
@@ -175,7 +177,7 @@ class Node
 
     while not r.contains? key
       n = n.closest_preceding_finger(key)
-      puts n.id, n.successor.id
+#      puts n.id, n.successor.id
       r = OpenClosedInterval.new(n.id, n.successor.id)
     end
 
@@ -183,7 +185,7 @@ class Node
   end
 
   def closest_preceding_finger(key)
-    binding.pry
+#    binding.pry
     r = OpenOpenInterval.new(@id, key)
     @finger.reverse_each do |f|
       if (r.contains? f.node.id)# or @id == key)
