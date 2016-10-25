@@ -35,6 +35,8 @@ class FingerEntry
   end
 end
 
+SHOW_THREAD = false
+
 class Node
 
   attr_reader :id
@@ -86,6 +88,9 @@ class Node
 
     stabilize_thread = Thread.new do
       while true
+        if SHOW_THREAD
+          puts @id
+        end
         sleep(1)
         stabilize()
         fix_fingers()
@@ -113,7 +118,8 @@ class Node
   end
 
   def notify(n)
-    if (n != self and @predecessor.nil?) or OpenOpenInterval.new(@predecessor.id, @id).contains? n.id
+    if (n != self and @predecessor.nil?) or
+      (not @predecessor.nil? and OpenOpenInterval.new(@predecessor.id, @id).contains? n.id)
       @predecessor = n
     end
   end
@@ -165,7 +171,12 @@ class Node
     end
   end 
 
+  # finds the node whose id is equal to or greater than key
   def find_successor(key)
+    if key == @id
+      return self
+    end
+    
     n = find_predecessor(key)
     n.successor
   end
