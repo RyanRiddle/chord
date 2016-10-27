@@ -1,3 +1,4 @@
+require 'openssl'
 require_relative 'constants'
 
 def difference(a, b)
@@ -38,3 +39,18 @@ class OpenOpenInterval < Interval
     0 < d1 and 0 < d2 and d1 < d2
   end
 end
+
+=begin
+def hash(key)
+  sha1 = OpenSSL::Digest::SHA1.new
+  str = sha1.digest key.to_s
+  hex_bytes = str.bytes.collect { |byte| "%02x" % byte }
+  hex = hex_bytes.join("")
+  OpenSSL::BN.new(hex, 16)
+end
+
+
+def generate_key
+  hash(Time.now.to_s)
+end
+=end

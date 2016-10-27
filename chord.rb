@@ -1,22 +1,5 @@
 require_relative 'utils'
-require 'openssl'
-require 'pry'
-
-
-=begin
-def hash(key)
-  sha1 = OpenSSL::Digest::SHA1.new
-  str = sha1.digest key.to_s
-  hex_bytes = str.bytes.collect { |byte| "%02x" % byte }
-  hex = hex_bytes.join("")
-  OpenSSL::BN.new(hex, 16)
-end
-
-
-def generate_key
-  hash(Time.now.to_s)
-end
-=end
+#require 'pry'
 
 class FingerEntry
   attr_reader :start, :interval
@@ -35,12 +18,11 @@ class FingerEntry
   end
 end
 
-SHOW_THREAD = false
-
 class Node
 
   attr_reader :id
   attr_reader :predecessor
+  attr_reader :finger
 
   def initialize(id)
     @id = id
@@ -88,24 +70,11 @@ class Node
 
     stabilize_thread = Thread.new do
       while true
-        if SHOW_THREAD
-          puts @id
-        end
         sleep(1)
         stabilize()
         fix_fingers()
       end
     end
-
-
-=begin
-    unless n.nil?
-      init_finger_table(n)
-      update_others()
-      else
-      @predecessor = self
-    end
-=end
   end
 
   def stabilize
@@ -128,48 +97,6 @@ class Node
     i = Random.rand(M)
     @finger[i].node = find_successor(@finger[i].start)
   end
-    
-
-  def init_finger_table(n)
-    @finger[0].node = n.find_successor(@finger[0].start)
-    @predecessor = successor.predecessor
-
-    for i in 0...M-1 do
-      if (ClosedOpenInterval.new(@id, @finger[i].node.id).contains? @finger[i+1].start)
-        @finger[i+1].node = @finger[i].node
-      else
-        @finger[i+1].node = n.find_successor(@finger[i+1].start)
-      end
-    end
-
-    if successor == n
-      successor.predecessor = self
-    else
-      successor.predecessor= n
-    end
-  end
-
-  def update_others
-#    binding.pry
-    for i in 0...M
-      p = find_predecessor((@id - 2**i) % KEYSPACE_SIZE)
-      if (p == self)
-        p = p.predecessor
-      end
-      p.update_finger_table(self, i)
-    end
-  end
-
-  def update_finger_table(s, i)
-#    binding.pry
-    #    if ClosedOpenInterval.new(@id, @finger[i].node.id).contains? s.id
-    r = ClosedOpenInterval.new(@finger[i].start, @finger[i].node.id)
-    if r.contains? s.id and @finger[i].start != @finger[i].node.id
-      @finger[i].node = s
-      p = @predecessor
-      p.update_finger_table(s, i)
-    end
-  end 
 
   # finds the node whose id is equal to or greater than key
   def find_successor(key)
