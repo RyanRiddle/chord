@@ -93,8 +93,11 @@ class Node
     end
   end
 
-  def fix_fingers
-    i = Random.rand(M)
+  def fix_fingers(i=nil)
+    if i.nil?
+      i = Random.rand(M)
+    end
+    
     @finger[i].node = find_successor(@finger[i].start)
   end
 
@@ -163,25 +166,3 @@ class Node
   end
   
 end
-
-=begin
-a = Node.new 0
-b = Node.new 1
-c = Node.new 3
-
-a.predecessor = c
-b.predecessor = a
-c.predecessor = b
-
-a.add_finger FingerEntry.new(1, 2, b)
-a.add_finger FingerEntry.new(2, 4, c)
-a.add_finger FingerEntry.new(4, 0, a)
-
-b.add_finger FingerEntry.new(2, 3, c)
-b.add_finger FingerEntry.new(3, 5, c)
-b.add_finger FingerEntry.new(5, 1, a)
-
-c.add_finger FingerEntry.new(4, 5, a)
-c.add_finger FingerEntry.new(5, 7, a)
-c.add_finger FingerEntry.new(7, 3, a)
-=end
