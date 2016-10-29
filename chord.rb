@@ -23,6 +23,7 @@ class Node
   attr_reader :id
   attr_reader :predecessor
   attr_reader :finger
+  attr_reader :data
   attr_accessor :alive
   attr_accessor :successor_list
 
@@ -132,10 +133,27 @@ class Node
     
   end
 
+  def transfer_keys(n)
+    r = OpenClosedInterval.new(@id, n.id)
+    transfered = []
+    
+    @data.each do |key, value|
+      if r.contains? key
+        n.store(key, value)
+        transfered.push key
+      end
+    end
+
+    transfered.each do |key|
+      @data.delete key
+    end
+  end
+
   def notify(n)
     if (n != self and @predecessor.nil?) or
       (not @predecessor.nil? and OpenOpenInterval.new(@predecessor.id, @id).contains? n.id)
       @predecessor = n
+      transfer_keys n
     end
   end
 
