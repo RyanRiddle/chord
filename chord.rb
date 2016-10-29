@@ -1,5 +1,5 @@
 require_relative 'utils'
-#require 'pry'
+require 'pry'
 
 class FingerEntry
   attr_reader :start, :interval
@@ -23,8 +23,11 @@ class Node
   attr_reader :id
   attr_reader :predecessor
   attr_reader :finger
+  attr_accessor :alive
+  attr_accessor :successor_list
 
   def initialize(id)
+    @alive = true
     @id = id
     @data = {}
 
@@ -34,6 +37,7 @@ class Node
       finish = (@id + 2**(i+1)) % KEYSPACE_SIZE
       @finger.push(FingerEntry.new(start, finish, self))
     end
+    @successor_list = Array.new M
   end
 
   def print_fingers
@@ -49,6 +53,16 @@ class Node
     else
       @finger[0].node
     end
+  end
+
+  def next_successor
+    if @successor_list.empty?
+      return nil
+    end
+    
+    n = @successor_list[0]
+    @successor_list = @successor_list.slice(1, @successor_list.length)
+    n
   end
 
   def predecessor=(n)
@@ -77,13 +91,45 @@ class Node
     end
   end
 
+  def update_successor_list
+    # successor_list[0] is not the same as finger[0].  it is finger[0].successor
+
+    s = successor
+    for i in 0...M do
+      if s.nil? or not s.alive
+        break
+      end
+      
+      successor_list[i] = s.successor
+      s = s.successor
+    end
+  end
+
   def stabilize
-    x = successor.predecessor
-    r = OpenOpenInterval.new(@id, successor.id)
+    s = successor
+    while not ping s
+      s = next_successor
+    end
+
+    if s.nil?
+      puts "None of node #{@id}'s successors are online!"
+    end
+
+    x = s.predecessor
+    if not x.nil? and not ping x
+      x = s
+    end
+    
+#    x = successor.predecessor
+    r = OpenClosedInterval.new(@id, s.id)
     if not x.nil? and (r.contains? x.id or @id == successor.id)
       @finger[0].node = x
     end
+    
     successor.notify(self)
+
+    update_successor_list
+    
   end
 
   def notify(n)
@@ -163,6 +209,10 @@ class Node
       n = find_successor(key)
       n.get(key)
     end
+  end
+
+  def ping(n)
+    n.alive
   end
   
 end
