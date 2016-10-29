@@ -121,36 +121,35 @@ class Node
       x = s
     end
     
-#    x = successor.predecessor
     r = OpenClosedInterval.new(@id, s.id)
     if not x.nil? and (r.contains? x.id or @id == successor.id)
       @finger[0].node = x
     end
-    
+
+    update_successor_list    
+
     successor.notify(self)
 
-    update_successor_list
-    
   end
 
   def transfer_keys(n)
     r = OpenClosedInterval.new(@id, n.id)
-    transfered = []
+    transfers = {}
     
     @data.each do |key, value|
       if r.contains? key
-        n.store(key, value)
-        transfered.push key
+        transfers[key] = value
+        @data.delete key
       end
     end
 
-    transfered.each do |key|
-      @data.delete key
+    transfers.each do |key, value|
+      n.store(key, value)
     end
   end
 
   def notify(n)
-    if (n != self and @predecessor.nil?) or
+    if (n != self and (@predecessor.nil? or not @predecessor.alive)) or
       (not @predecessor.nil? and OpenOpenInterval.new(@predecessor.id, @id).contains? n.id)
       @predecessor = n
       transfer_keys n
@@ -212,9 +211,19 @@ class Node
     r.contains? key
   end
 
+  def replicate(key, value)
+    @data[key] = value
+  end
+
   def store(key, value)
     if owns? key
       @data[key] = value
+      successor.replicate(key, value)
+      @successor_list.each do |s|
+        if not s.nil? and s.alive
+          s.replicate(key, value)
+        end
+      end
     else
       successor.store(key, value)
     end
