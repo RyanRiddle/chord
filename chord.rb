@@ -1,6 +1,8 @@
 require_relative 'utils'
 require 'pry'
 
+require 'socket'
+
 class FingerEntry
   attr_reader :start, :interval
   attr_accessor :node
@@ -27,10 +29,13 @@ class Node
   attr_accessor :alive
   attr_accessor :successor_list
 
-  def initialize(id)
+  def initialize(id, addr, port)
     @alive = true
     @id = id
     @data = {}
+
+	@addr = addr
+	@port = port
 
     @finger = []
     for i in 0...M do
@@ -90,6 +95,17 @@ class Node
         fix_fingers()
       end
     end
+
+	server_thread = Thread.new do
+		server = TCPServer.new(@addr, @port)
+		loop do
+			Thread.start(server.accept) do |s|
+				# do a simple echo for now
+				s.write(s.gets)
+				s.close
+			end
+		end
+	end
   end
 
   def update_successor_list
