@@ -96,16 +96,22 @@ class Node
       end
     end
 
-	server_thread = Thread.new do
-		server = TCPServer.new(@addr, @port)
-		loop do
-			Thread.start(server.accept) do |s|
-				# do a simple echo for now
-				s.write(s.gets)
-				s.close
-			end
-		end
+    server_thread = Thread.new do
+      server = TCPServer.new(@addr, @port)
+      loop do
+	Thread.start(server.accept) do |s|
+	  # do a simple echo for now
+	  s.write(s.gets + "\n")
+#	  s.close
 	end
+      end
+    end
+  end
+
+  def send(addr, port, msg)
+    s = TCPSocket.new(addr, port)
+    s.puts(msg)
+    puts s.gets
   end
 
   def update_successor_list
