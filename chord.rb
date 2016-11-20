@@ -5,18 +5,18 @@ require 'socket'
 
 class FingerEntry
   attr_reader :start, :interval
-  attr_accessor :node
+  attr_accessor :noderef
   
-  def initialize(start, finish, node)
+  def initialize(start, finish, noderef)
     @start = start
     @interval = ClosedOpenInterval.new(start, finish)
-    @node = node
+    @noderef = noderef
   end
 
   def display
     print @start.to_s + " "
     @interval.display
-    print " " + @node.id.to_s + "\n"
+    print " " + @noderef.id.to_s + "\n"
   end
 end
 
@@ -30,6 +30,78 @@ class NodeReference
     @addr = addr
     @port = port
   end
+
+	def connect
+		begin
+			s = TCPSocket.new(@addr, @port)
+		rescue Errno::ECONNREFUSED
+			nil
+		end
+	end
+
+	def online?
+		s = connect
+		if s.nil?
+			return false
+		end
+	
+		s.close
+		true
+	end
+
+	def predecessor
+		s = connect
+		if not s.nil?
+			s.puts("PREDECESSOR\n")
+			response = s.gets.chomp
+			s.close
+
+			tokens = response.split
+			NodeReference.new(tokens[1], tokens[3], tokens[5])
+		end
+	end
+
+	def successor
+		s = connect
+		if not s.nil?
+			s.puts("SUCCESSOR\n")
+			response = s.gets.chomp
+			s.close
+
+			tokens = response.split
+			NodeReference.new(tokens[1], tokens[3], tokens[5])
+		end
+	end
+
+	def notify(n)
+		s = connect
+		if not s.nil?
+			id = n.id
+			addr = n.addr
+			port = n.port
+			s.puts("NOTIFY ID #{id} ADDR #{addr} PORT #{port}\n")
+			s.close
+		end
+	end
+
+	def store(key, value)
+		s = connect
+		if not s.nil?
+			s.puts "STORE #{key} #{value}\n"
+			# don't want server to chomp any newlines at the end of value.
+			# how do we fix this?
+			s.close
+		end
+	end
+
+	def replicate(key, value)
+		s = connect
+		if not s.nil?
+			s.puts "REPLICATE #{key} #{value}\n"
+			s.close
+		end
+	end
+
 end
 
 class Node
@@ -49,11 +121,12 @@ class Node
 		@addr = addr
 		@port = port
 
+		ref = NodeReference.new @id, @addr, @port
     @finger = []
     for i in 0...M do
       start = (@id + 2**i) % KEYSPACE_SIZE
       finish = (@id + 2**(i+1)) % KEYSPACE_SIZE
-      @finger.push(FingerEntry.new(start, finish, self))
+      @finger.push(FingerEntry.new(start, finish, ref))
     end
     @successor_list = Array.new M
   end
@@ -69,7 +142,7 @@ class Node
     if @finger.empty?
       nil
     else
-      @finger[0].node
+      @finger[0].noderef
     end
   end
 
@@ -92,10 +165,42 @@ class Node
     @finger.push(f)
   end
 
+	def handle_request(socket)
+		req = socket.gets.chomp
+		if req == "PREDECESSOR"
+			id = @predecessor.id
+			addr = @predecessor.addr
+			port = @predecessor.port
+			response = "ID #{id} ADDR #{addr} PORT #{port}\n"
+
+			socket.puts response
+		elsif req == "SUCCESSOR"
+			s = successor
+			id = s.id
+			addr = s.addr
+			port = s.port
+			response = "ID #{id} ADDR #{addr} PORT #{port}\n"
+
+			socket.puts response
+		elsif req.start_with? "NOTIFY"
+			tokens = req.split
+			noderef = NodeReference.new tokens[2], tokens[4], tokens[6]
+			notify noderef
+		elsif req.start_with? "STORE"
+			tokens = req.split
+			store tokens[1], tokens[2]
+		elsif req.start_with "REPLICATE"
+			tokens = req.split
+			replicate tokens[1], tokens[2]
+		end
+
+		socket.close
+	end
+
   def join(n)
     @predecessor = nil
     if not n.nil?
-      @finger[0].node = n.find_successor(@id)
+      @finger[0].noderef = n.find_successor(@id)
       stabilize
       n.stabilize
     end
@@ -112,24 +217,12 @@ class Node
       server = TCPServer.new(@addr, @port)
       loop do
 				Thread.start(server.accept) do |s|
-					# do a simple echo for now
-					s.write(s.gets + "\n")
-					#s.close
+					handle_request s
 				end
       end
     end
   end
 
-	def connect(n)
-		addr = n.addr
-		port = n.port
-
-		begin
-			s = TCPSocket.new(addr, port)
-		rescue Errno::ECONNREFUSED
-			nil
-		end
-	end
 
   def send(addr, port, msg)
     s = TCPSocket.new(addr, port)
@@ -142,33 +235,35 @@ class Node
 
     s = successor
     for i in 0...M do
-      if s.nil? or not s.alive
+      if s.nil? or not s.online?
         break
       end
       
-      successor_list[i] = s.successor
       s = s.successor
+      successor_list[i] = s
     end
   end
 
   def stabilize
     s = successor
-    while not ping s
+    while s.nil? or not s.online?
       s = next_successor
     end
 
     if s.nil?
       puts "None of node #{@id}'s successors are online!"
+			# should we exit here?
+			return
     end
 
     x = s.predecessor
-    if not x.nil? and not ping x
+    if not x.nil? and not x.online?
       x = s
     end
     
     r = OpenClosedInterval.new(@id, s.id)
     if not x.nil? and (r.contains? x.id or @id == successor.id)
-      @finger[0].node = x
+      @finger[0].noderef = x
     end
 
     update_successor_list    
@@ -194,7 +289,7 @@ class Node
   end
 
   def notify(n)
-    if (n != self and (@predecessor.nil? or not @predecessor.alive)) or
+    if (n.id != @id and (@predecessor.nil? or not @predecessor.alive)) or
       (not @predecessor.nil? and OpenOpenInterval.new(@predecessor.id, @id).contains? n.id)
       @predecessor = n
       transfer_keys n
@@ -206,7 +301,7 @@ class Node
       i = Random.rand(M)
     end
     
-    @finger[i].node = find_successor(@finger[i].start)
+    @finger[i].noderef = find_successor(@finger[i].start)
   end
 
   # finds the node whose id is equal to or greater than key
@@ -265,7 +360,7 @@ class Node
       @data[key] = value
       successor.replicate(key, value)
       @successor_list.each do |s|
-        if not s.nil? and s.alive
+        if not s.nil? and s.online?
           s.replicate(key, value)
         end
       end
