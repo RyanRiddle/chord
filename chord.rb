@@ -20,6 +20,18 @@ class FingerEntry
   end
 end
 
+class NodeReference
+  attr_reader :id
+  attr_reader :addr
+  attr_reader :port
+
+  def initialize(id, addr, port)
+    @id = id
+    @addr = addr
+    @port = port
+  end
+end
+
 class Node
 
   attr_reader :id
@@ -34,8 +46,8 @@ class Node
     @id = id
     @data = {}
 
-	@addr = addr
-	@port = port
+		@addr = addr
+		@port = port
 
     @finger = []
     for i in 0...M do
@@ -99,14 +111,25 @@ class Node
     server_thread = Thread.new do
       server = TCPServer.new(@addr, @port)
       loop do
-	Thread.start(server.accept) do |s|
-	  # do a simple echo for now
-	  s.write(s.gets + "\n")
-#	  s.close
-	end
+				Thread.start(server.accept) do |s|
+					# do a simple echo for now
+					s.write(s.gets + "\n")
+					#s.close
+				end
       end
     end
   end
+
+	def connect(n)
+		addr = n.addr
+		port = n.port
+
+		begin
+			s = TCPSocket.new(addr, port)
+		rescue Errno::ECONNREFUSED
+			nil
+		end
+	end
 
   def send(addr, port, msg)
     s = TCPSocket.new(addr, port)
