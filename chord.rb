@@ -56,8 +56,15 @@ class NodeReference
 			response = s.gets.chomp
 			s.close
 
+			if response.start_with? "ERROR"
+				return nil
+			end
+
 			tokens = response.split
-			NodeReference.new(tokens[1], tokens[3], tokens[5])
+			id = tokens[1].to_i		# to_i won't work for hashes
+			addr = tokens[3]
+			port = tokens[5].to_i
+			NodeReference.new(id, addr, port)
 		end
 	end
 
@@ -69,7 +76,10 @@ class NodeReference
 			s.close
 
 			tokens = response.split
-			NodeReference.new(tokens[1], tokens[3], tokens[5])
+			id = tokens[1].to_i		# to_i won't work for hashes
+			addr = tokens[3]
+			port = tokens[5].to_i
+			NodeReference.new(id, addr, port)
 		end
 	end
 
@@ -110,23 +120,21 @@ class Node
   attr_reader :predecessor
   attr_reader :finger
   attr_reader :data
-  attr_accessor :alive
   attr_accessor :successor_list
 
   def initialize(id, addr, port)
-    @alive = true
     @id = id
     @data = {}
 
 		@addr = addr
 		@port = port
 
-		ref = NodeReference.new @id, @addr, @port
+		@ref = NodeReference.new @id, @addr, @port
     @finger = []
     for i in 0...M do
       start = (@id + 2**i) % KEYSPACE_SIZE
       finish = (@id + 2**(i+1)) % KEYSPACE_SIZE
-      @finger.push(FingerEntry.new(start, finish, ref))
+      @finger.push(FingerEntry.new(start, finish, @ref))
     end
     @successor_list = Array.new M
   end
@@ -168,10 +176,14 @@ class Node
 	def handle_request(socket)
 		req = socket.gets.chomp
 		if req == "PREDECESSOR"
-			id = @predecessor.id
-			addr = @predecessor.addr
-			port = @predecessor.port
-			response = "ID #{id} ADDR #{addr} PORT #{port}\n"
+			unless @predecessor.nil?
+				id = @predecessor.id
+				addr = @predecessor.addr
+				port = @predecessor.port
+				response = "ID #{id} ADDR #{addr} PORT #{port}\n"
+			else
+				response = "ERROR"
+			end
 
 			socket.puts response
 		elsif req == "SUCCESSOR"
@@ -223,13 +235,6 @@ class Node
     end
   end
 
-
-  def send(addr, port, msg)
-    s = TCPSocket.new(addr, port)
-    s.puts(msg)
-    puts s.gets
-  end
-
   def update_successor_list
     # successor_list[0] is not the same as finger[0].  it is finger[0].successor
 
@@ -268,7 +273,7 @@ class Node
 
     update_successor_list    
 
-    successor.notify(self)
+    successor.notify(@ref)
 
   end
 
@@ -289,7 +294,7 @@ class Node
   end
 
   def notify(n)
-    if (n.id != @id and (@predecessor.nil? or not @predecessor.alive)) or
+    if (n.id != @id and (@predecessor.nil? or not @predecessor.online?)) or
       (not @predecessor.nil? and OpenOpenInterval.new(@predecessor.id, @id).contains? n.id)
       @predecessor = n
       transfer_keys n
@@ -307,7 +312,7 @@ class Node
   # finds the node whose id is equal to or greater than key
   def find_successor(key)
     if key == @id
-      return self
+      return @ref
     end
     
     n = find_predecessor(key)
@@ -316,7 +321,7 @@ class Node
 
   def find_predecessor(key)
     #    binding.pry
-    n = self
+    n = @ref
     r = OpenClosedInterval.new(n.id, n.successor.id)
 
     while not r.contains? key
@@ -332,8 +337,8 @@ class Node
 #    binding.pry
     r = OpenOpenInterval.new(@id, key)
     @finger.reverse_each do |f|
-      if (r.contains? f.node.id)# or @id == key)
-        return f.node
+      if (r.contains? f.noderef.id)# or @id == key)
+        return f.noderef
       end
     end
 
@@ -377,9 +382,4 @@ class Node
       n.get(key)
     end
   end
-
-  def ping(n)
-    n.alive
-  end
-  
 end
