@@ -83,6 +83,29 @@ class NodeReference
 		end
 	end
 
+	def find_successor(key)
+		s = connect
+		if not s.nil?
+			s.puts("FIND SUCCESSOR #{key}\n")
+			response = s.gets.chomp
+			s.close
+
+			tokens = response.split
+			id = tokens[1].to_i		# to_i won't work for hashes
+			addr = tokens[3]
+			port = tokens[5].to_i
+			NodeReference.new(id, addr, port)
+		end
+	end
+
+	def stabilize
+		s = connect
+		if not s.nil?
+			s.puts "STABILIZE\n"
+			s.close
+		end
+	end
+
 	def notify(n)
 		s = connect
 		if not s.nil?
@@ -193,6 +216,18 @@ class Node
 			port = s.port
 			response = "ID #{id} ADDR #{addr} PORT #{port}\n"
 
+			socket.puts response
+		elsif req == "STABILIZE"
+			stabilize
+		elsif req.start_with? "FIND SUCCESSOR"
+			tokens = req.split
+			key = tokens[2].to_i
+
+			noderef = find_successor key
+			id = noderef.id
+			addr = noderef.addr
+			port = noderef.port
+			response = "ID #{id} ADDR #{addr} PORT #{port}\n"
 			socket.puts response
 		elsif req.start_with? "NOTIFY"
 			tokens = req.split
