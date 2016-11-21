@@ -196,7 +196,10 @@ class Node
 			socket.puts response
 		elsif req.start_with? "NOTIFY"
 			tokens = req.split
-			noderef = NodeReference.new tokens[2], tokens[4], tokens[6]
+			id = tokens[2].to_i
+			addr = tokens[4]
+			port = tokens[6].to_i
+			noderef = NodeReference.new id, addr, port
 			notify noderef
 		elsif req.start_with? "STORE"
 			tokens = req.split
