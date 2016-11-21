@@ -1,141 +1,7 @@
-require_relative 'utils'
 require 'pry'
 
-require 'socket'
-
-class FingerEntry
-  attr_reader :start, :interval
-  attr_accessor :noderef
-  
-  def initialize(start, finish, noderef)
-    @start = start
-    @interval = ClosedOpenInterval.new(start, finish)
-    @noderef = noderef
-  end
-
-  def display
-    print @start.to_s + " "
-    @interval.display
-    print " " + @noderef.id.to_s + "\n"
-  end
-end
-
-class NodeReference
-  attr_reader :id
-  attr_reader :addr
-  attr_reader :port
-
-  def initialize(id, addr, port)
-    @id = id
-    @addr = addr
-    @port = port
-  end
-
-	def connect
-		begin
-			s = TCPSocket.new(@addr, @port)
-		rescue Errno::ECONNREFUSED
-			nil
-		end
-	end
-
-	def online?
-		s = connect
-		if s.nil?
-			return false
-		end
-	
-		s.close
-		true
-	end
-
-	def predecessor
-		s = connect
-		if not s.nil?
-			s.puts("PREDECESSOR\n")
-			response = s.gets.chomp
-			s.close
-
-			if response.start_with? "ERROR"
-				return nil
-			end
-
-			tokens = response.split
-			id = tokens[1].to_i		# to_i won't work for hashes
-			addr = tokens[3]
-			port = tokens[5].to_i
-			NodeReference.new(id, addr, port)
-		end
-	end
-
-	def successor
-		s = connect
-		if not s.nil?
-			s.puts("SUCCESSOR\n")
-			response = s.gets.chomp
-			s.close
-
-			tokens = response.split
-			id = tokens[1].to_i		# to_i won't work for hashes
-			addr = tokens[3]
-			port = tokens[5].to_i
-			NodeReference.new(id, addr, port)
-		end
-	end
-
-	def find_successor(key)
-		s = connect
-		if not s.nil?
-			s.puts("FIND SUCCESSOR #{key}\n")
-			response = s.gets.chomp
-			s.close
-
-			tokens = response.split
-			id = tokens[1].to_i		# to_i won't work for hashes
-			addr = tokens[3]
-			port = tokens[5].to_i
-			NodeReference.new(id, addr, port)
-		end
-	end
-
-	def stabilize
-		s = connect
-		if not s.nil?
-			s.puts "STABILIZE\n"
-			s.close
-		end
-	end
-
-	def notify(n)
-		s = connect
-		if not s.nil?
-			id = n.id
-			addr = n.addr
-			port = n.port
-			s.puts("NOTIFY ID #{id} ADDR #{addr} PORT #{port}\n")
-			s.close
-		end
-	end
-
-	def store(key, value)
-		s = connect
-		if not s.nil?
-			s.puts "STORE #{key} #{value}\n"
-			# don't want server to chomp any newlines at the end of value.
-			# how do we fix this?
-			s.close
-		end
-	end
-
-	def replicate(key, value)
-		s = connect
-		if not s.nil?
-			s.puts "REPLICATE #{key} #{value}\n"
-			s.close
-		end
-	end
-
-end
+require_relative 'finger_entry'
+require_relative 'node_reference'
 
 class Node
 
@@ -229,6 +95,16 @@ class Node
 			port = noderef.port
 			response = "ID #{id} ADDR #{addr} PORT #{port}\n"
 			socket.puts response
+		elsif req.start_with? "CLOSEST PRECEDING FINGER"
+			tokens = req.split
+			key = tokens[3].to_i
+
+			noderef = closest_preceding_finger key
+			id = noderef.id
+			addr = noderef.addr
+			port = noderef.port
+			response = "ID #{id} ADDR #{addr} PORT #{port}\n"
+			socket.puts response
 		elsif req.start_with? "NOTIFY"
 			tokens = req.split
 			id = tokens[2].to_i
@@ -238,10 +114,16 @@ class Node
 			notify noderef
 		elsif req.start_with? "STORE"
 			tokens = req.split
-			store tokens[1], tokens[2]
-		elsif req.start_with "REPLICATE"
+			store tokens[1].to_i, tokens[2]
+		elsif req.start_with? "REPLICATE"
 			tokens = req.split
-			replicate tokens[1], tokens[2]
+			replicate tokens[1].to_i, tokens[2]
+		elsif req.start_with? "GET"
+			tokens = req.split
+			key = tokens[1].to_i
+			value = get key
+			response = "VALUE #{value}\n"
+			socket.puts response
 		end
 
 		socket.close
@@ -269,6 +151,7 @@ class Node
 				Thread.start(server.accept) do |s|
 					handle_request s
 				end
+				# do i need to kill this thread?
       end
     end
   end
@@ -311,6 +194,7 @@ class Node
 
     update_successor_list    
 
+		# i think i need to change successor to s
     successor.notify(@ref)
 
   end
