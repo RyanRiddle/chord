@@ -138,7 +138,7 @@ class NodeReference
 			s.close
 		
 			tokens = response.split
-			tokens[1]
+			tokens.slice(1, tokens.length).join " "
 		end
 	end
 end

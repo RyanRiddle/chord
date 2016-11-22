@@ -114,10 +114,14 @@ class Node
 			notify noderef
 		elsif req.start_with? "STORE"
 			tokens = req.split
-			store tokens[1].to_i, tokens[2]
+			key = tokens[1].to_i
+			value = tokens.slice(2, tokens.length).join(" ")
+			store key, value
 		elsif req.start_with? "REPLICATE"
 			tokens = req.split
-			replicate tokens[1].to_i, tokens[2]
+			key = tokens[1].to_i
+			value = tokens.slice(2, tokens.length).join(" ")
+			replicate key, value
 		elsif req.start_with? "GET"
 			tokens = req.split
 			key = tokens[1].to_i
