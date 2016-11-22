@@ -1,2 +1,3 @@
-M = 3
+M = 160
 KEYSPACE_SIZE = 2**M
+NUM_ADJACENT = 1

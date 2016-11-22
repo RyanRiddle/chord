@@ -1,14 +1,16 @@
 require 'socket'
+require_relative 'utils'
 
 class NodeReference
   attr_reader :id
   attr_reader :addr
   attr_reader :port
 
-  def initialize(id, addr, port)
-    @id = id
+  def initialize(addr, port)
     @addr = addr
     @port = port
+
+		@id = sha1 "#{addr}:#{port}"
   end
 
 	def connect
@@ -41,10 +43,9 @@ class NodeReference
 			end
 
 			tokens = response.split
-			id = tokens[1].to_i		# to_i won't work for hashes
 			addr = tokens[3]
 			port = tokens[5].to_i
-			NodeReference.new(id, addr, port)
+			NodeReference.new(addr, port)
 		end
 	end
 
@@ -56,10 +57,9 @@ class NodeReference
 			s.close
 
 			tokens = response.split
-			id = tokens[1].to_i		# to_i won't work for hashes
 			addr = tokens[3]
 			port = tokens[5].to_i
-			NodeReference.new(id, addr, port)
+			NodeReference.new(addr, port)
 		end
 	end
 
@@ -71,10 +71,9 @@ class NodeReference
 			s.close
 
 			tokens = response.split
-			id = tokens[1].to_i		# to_i won't work for hashes
 			addr = tokens[3]
 			port = tokens[5].to_i
-			NodeReference.new(id, addr, port)
+			NodeReference.new(addr, port)
 		end
 	end
 
@@ -86,10 +85,9 @@ class NodeReference
 			s.close
 
 			tokens = response.split
-			id = tokens[1].to_i		# to_i won't work for hashes
 			addr = tokens[3]
 			port = tokens[5].to_i
-			NodeReference.new(id, addr, port)
+			NodeReference.new(addr, port)
 		end
 	end	
 

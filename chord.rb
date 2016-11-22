@@ -6,26 +6,27 @@ require_relative 'node_reference'
 class Node
 
   attr_reader :id
+	attr_reader :ref
   attr_reader :predecessor
   attr_reader :finger
   attr_reader :data
   attr_accessor :successor_list
 
-  def initialize(id, addr, port)
-    @id = id
+  def initialize(addr, port)
     @data = {}
 
 		@addr = addr
 		@port = port
+		@id = sha1 "#{@addr}:#{port}"
 
-		@ref = NodeReference.new @id, @addr, @port
+		@ref = NodeReference.new @addr, @port
     @finger = []
     for i in 0...M do
       start = (@id + 2**i) % KEYSPACE_SIZE
       finish = (@id + 2**(i+1)) % KEYSPACE_SIZE
       @finger.push(FingerEntry.new(start, finish, @ref))
     end
-    @successor_list = Array.new M
+    @successor_list = Array.new NUM_ADJACENT
   end
 
   def print_fingers
@@ -110,21 +111,21 @@ class Node
 			id = tokens[2].to_i
 			addr = tokens[4]
 			port = tokens[6].to_i
-			noderef = NodeReference.new id, addr, port
+			noderef = NodeReference.new addr, port
 			notify noderef
 		elsif req.start_with? "STORE"
 			tokens = req.split
-			key = tokens[1].to_i
+			key = tokens[1]
 			value = tokens.slice(2, tokens.length).join(" ")
 			store key, value
 		elsif req.start_with? "REPLICATE"
 			tokens = req.split
-			key = tokens[1].to_i
+			key = tokens[1]
 			value = tokens.slice(2, tokens.length).join(" ")
 			replicate key, value
 		elsif req.start_with? "GET"
 			tokens = req.split
-			key = tokens[1].to_i
+			key = tokens[1]
 			value = get key
 			response = "VALUE #{value}\n"
 			socket.puts response
@@ -164,7 +165,7 @@ class Node
     # successor_list[0] is not the same as finger[0].  it is finger[0].successor
 
     s = successor
-    for i in 0...M do
+    for i in 0...NUM_ADJACENT do
       if s.nil? or not s.online?
         break
       end
@@ -283,28 +284,45 @@ class Node
   end
 
   def replicate(key, value)
-    @data[key] = value
+		h = sha1 key
+
+		if @data[h].nil?
+			@data[h] = {key => value}
+		else
+			@data[h][key] = value
+		end
   end
 
   def store(key, value)
-    if owns? key
-      @data[key] = value
+		h = sha1 key
+    if owns? h
+
+			if @data[h].nil?
+				@data[h] = {key => value}
+			else
+      	@data[h][key] = value
+			end
+
+			# store data in adjacent nodes in case this node fails
       successor.replicate(key, value)
       @successor_list.each do |s|
         if not s.nil? and s.online?
           s.replicate(key, value)
         end
       end
+
     else
+			# find_successor.store key, value
       successor.store(key, value)
     end
   end
 
   def get(key)
-    if owns? key
-      @data[key]
+		h = sha1 key
+    if owns? h
+      @data[h].nil? ? nil : @data[h][key]
     else
-      n = find_successor(key)
+      n = find_successor(h)
       n.get(key)
     end
   end

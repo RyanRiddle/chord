@@ -1,6 +1,15 @@
 require 'openssl'
 require_relative 'constants'
 
+def sha1(key)
+  sha1 = OpenSSL::Digest::SHA1.new
+  str = sha1.digest key.to_s
+  hex_bytes = str.bytes.collect { |byte| "%02x" % byte }
+  hex = hex_bytes.join("")
+  OpenSSL::BN.new(hex, 16).to_i
+end
+
+
 def difference(a, b)
   (b - a) % KEYSPACE_SIZE
 end
@@ -41,15 +50,6 @@ class OpenOpenInterval < Interval
 end
 
 =begin
-def hash(key)
-  sha1 = OpenSSL::Digest::SHA1.new
-  str = sha1.digest key.to_s
-  hex_bytes = str.bytes.collect { |byte| "%02x" % byte }
-  hex = hex_bytes.join("")
-  OpenSSL::BN.new(hex, 16)
-end
-
-
 def generate_key
   hash(Time.now.to_s)
 end
