@@ -143,6 +143,19 @@ class Node
 				socket.puts response
 				socket.write value
 			end
+		elsif req.start_with? "CLIENT GET"
+			req = socket.gets
+			tokens = req.split
+			key_size = tokens[1].to_i
+			key = socket.read(key_size)
+			value = get key
+			while value.is_a? NodeReference
+				value = value.get key
+			end
+
+			response = "HERE #{value.bytes.count}"
+			socket.puts response
+			socket.write value
 		end
 
 		socket.close
