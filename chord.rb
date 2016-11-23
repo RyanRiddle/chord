@@ -55,6 +55,7 @@ class Node
     
     n = @successor_list[0]
     @successor_list = @successor_list.slice(1, @successor_list.length)
+		@finger[0].noderef = n
     n
   end
 
@@ -175,7 +176,7 @@ class Node
 
     stabilize_thread = Thread.new do
       while true
-        sleep(1)
+        sleep 1
         stabilize()
         fix_fingers()
       end
@@ -230,7 +231,6 @@ class Node
 
     update_successor_list    
 
-		# i think i need to change successor to s
     successor.notify(@ref)
 
   end
@@ -239,15 +239,24 @@ class Node
     r = OpenClosedInterval.new(@id, n.id)
     transfers = {}
     
-    @data.each do |key, value|
-      if r.contains? key
-        transfers[key] = value
-        @data.delete key
+    @data.each do |hash, kvpairs|
+      if r.contains? hash
+        transfers[key] = kvpairs
+        @data.delete hash
       end
     end
 
-    transfers.each do |key, value|
-      n.store(key, value)
+    transfers.each do |hash, kvpairs|
+			kvpairs.each do |key, filename|
+				fullpath = File.join(@dir, filename)
+				f = File.open(fullpath, "r")
+				value = f.read
+				f.close
+
+				File.delete fullpath
+
+				n.store(key, value)
+			end
     end
   end
 
@@ -356,7 +365,7 @@ class Node
 
   def get(key)
 		h = sha1 key
-    if owns? h
+    if owns? h #or not @data[h].nil?
       unless @data[h].nil? 
 				filename = "#{h}_#{key}"
 				f = File.open(File.join(@dir, filename), "r")
@@ -367,7 +376,8 @@ class Node
 				""
 			end	
     else
-      n = find_successor(h)
+      n = closest_preceding_finger h
+			n.successor
     end
   end
 end

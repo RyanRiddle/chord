@@ -67,13 +67,16 @@ class NodeReference
 		s = connect
 		if not s.nil?
 			s.puts("FIND SUCCESSOR #{key}\n")
-			response = s.gets.chomp
-			s.close
+			response = s.gets
+			unless response.nil?
+				response = response.chomp
+				s.close
 
-			tokens = response.split
-			addr = tokens[3]
-			port = tokens[5].to_i
-			NodeReference.new(addr, port)
+				tokens = response.split
+				addr = tokens[3]
+				port = tokens[5].to_i
+				NodeReference.new(addr, port)
+			end
 		end
 	end
 
