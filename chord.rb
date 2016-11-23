@@ -12,8 +12,12 @@ class Node
   attr_reader :data
   attr_accessor :successor_list
 
-  def initialize(addr, port)
+  def initialize(addr, port, dir)
     @data = {}
+		@dir = File.absolute_path dir
+		if not Dir.exist? @dir
+			Dir.mkdir @dir
+		end
 
 		@addr = addr
 		@port = port
@@ -310,25 +314,30 @@ class Node
     r.contains? key
   end
 
+	def persist key, hash, value
+		filename = "#{hash}_#{key}"
+		f = File.open(File.join(@dir, filename), "w")
+		f.write value
+		f.close
+
+		if @data[hash].nil?
+			@data[hash] = {key => value}
+		else
+			@data[hash][key] = filename
+		end
+	end
+
   def replicate(key, value)
 		h = sha1 key
 
-		if @data[h].nil?
-			@data[h] = {key => value}
-		else
-			@data[h][key] = value
-		end
+		persist key, h, value
   end
 
   def store(key, value)
 		h = sha1 key
     if owns? h
 
-			if @data[h].nil?
-				@data[h] = {key => value}
-			else
-      	@data[h][key] = value
-			end
+			persist key, h, value
 
 			# store data in adjacent nodes in case this node fails
       successor.replicate(key, value)
@@ -348,7 +357,15 @@ class Node
   def get(key)
 		h = sha1 key
     if owns? h
-      @data[h].nil? ? "" : @data[h][key]
+      unless @data[h].nil? 
+				filename = "#{h}_#{key}"
+				f = File.open(File.join(@dir, filename), "r")
+				value = f.read
+				f.close
+				value
+			else
+				""
+			end	
     else
       n = find_successor(h)
     end
