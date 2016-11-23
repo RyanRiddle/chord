@@ -124,11 +124,19 @@ class Node
 			value = tokens.slice(2, tokens.length).join(" ")
 			replicate key, value
 		elsif req.start_with? "GET"
+			req = socket.gets
 			tokens = req.split
-			key = tokens[1]
+			key_size = tokens[1].to_i
+			key = socket.read(key_size)
 			value = get key
-			response = "VALUE #{value}\n"
-			socket.puts response
+			if value.is_a? NodeReference
+				response = "ASK ADDR #{value.addr} PORT #{value.port}"
+				socket.puts response
+			else
+				response = "HERE #{value.bytes.count}"
+				socket.puts response
+				socket.write value
+			end
 		end
 
 		socket.close
@@ -320,10 +328,9 @@ class Node
   def get(key)
 		h = sha1 key
     if owns? h
-      @data[h].nil? ? nil : @data[h][key]
+      @data[h].nil? ? "" : @data[h][key]
     else
       n = find_successor(h)
-      n.get(key)
     end
   end
 end

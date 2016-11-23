@@ -131,12 +131,24 @@ class NodeReference
 	def get(key)
 		s = connect
 		if not s.nil?
-			s.puts "GET #{key}\n"
+			s.puts "GET"
+			s.puts "KEY #{key.bytes.count}"
+			s.write key
+
 			response = s.gets.chomp
-			s.close
-		
-			tokens = response.split
-			tokens.slice(1, tokens.length).join " "
+			if response.start_with? "HERE"
+				tokens = response.split
+				data_size = tokens[1].to_i
+				data = s.read(data_size)	
+				s.close
+				data
+			else # response.start_with? "ASK" == true
+				s.close
+				tokens = response.split
+				addr = tokens[2]
+				port = tokens[4].to_i
+				NodeReference.new addr, port
+			end		
 		end
 	end
 end
