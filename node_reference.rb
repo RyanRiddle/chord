@@ -113,9 +113,12 @@ class NodeReference
 	def store(key, value)
 		s = connect
 		if not s.nil?
-			s.puts "STORE #{key} #{value}\n"
-			# don't want server to chomp any newlines at the end of value.
-			# how do we fix this?
+			s.puts "STORE"
+			s.puts "KEY #{key.bytes.count}"
+			s.write key
+			s.puts "VALUE #{value.bytes.count}"
+			s.write value
+			# should we look for a response?
 			s.close
 		end
 	end
@@ -123,7 +126,12 @@ class NodeReference
 	def replicate(key, value)
 		s = connect
 		if not s.nil?
-			s.puts "REPLICATE #{key} #{value}\n"
+			s.puts "REPLICATE"
+			s.puts "KEY #{key.bytes.count}"
+			s.write key
+			s.puts "VALUE #{value.bytes.count}"
+			s.write value
+			# should we look for a response?
 			s.close
 		end
 	end

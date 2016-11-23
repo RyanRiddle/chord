@@ -114,14 +114,20 @@ class Node
 			noderef = NodeReference.new addr, port
 			notify noderef
 		elsif req.start_with? "STORE"
-			tokens = req.split
-			key = tokens[1]
-			value = tokens.slice(2, tokens.length).join(" ")
+			req = socket.gets
+			key_size = req.split[1].to_i
+			key = socket.read key_size
+			req = socket.gets
+			value_size = req.split[1].to_i
+			value = socket.read value_size
 			store key, value
 		elsif req.start_with? "REPLICATE"
-			tokens = req.split
-			key = tokens[1]
-			value = tokens.slice(2, tokens.length).join(" ")
+			req = socket.gets
+			key_size = req.split[1].to_i
+			key = socket.read key_size
+			req = socket.gets
+			value_size = req.split[1].to_i
+			value = socket.read value_size
 			replicate key, value
 		elsif req.start_with? "GET"
 			req = socket.gets
@@ -320,8 +326,9 @@ class Node
       end
 
     else
-			# find_successor.store key, value
-      successor.store(key, value)
+			s = find_successor h
+			s.store key, value
+      #successor.store(key, value)
     end
   end
 
