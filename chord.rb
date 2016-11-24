@@ -259,7 +259,7 @@ class Node
     
     @data.each do |hash, kvpairs|
       if r.contains? hash
-        transfers[key] = kvpairs
+        transfers[hash] = kvpairs
         @data.delete hash
       end
     end
