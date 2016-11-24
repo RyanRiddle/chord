@@ -1,5 +1,3 @@
-require 'pry'
-
 require_relative 'finger_entry'
 require_relative 'node_reference'
 
