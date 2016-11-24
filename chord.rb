@@ -199,12 +199,14 @@ class Node
     end
 
     server_thread = Thread.new do
-      server = TCPServer.new(@addr, @port)
+			local_addr = Socket.ip_address_list.find do |ip|
+				ip.ipv4? and not ip.ipv4_loopback?
+			end
+      server = TCPServer.new(local_addr.getnameinfo[0], @port)
       loop do
 				Thread.start(server.accept) do |s|
 					handle_request s
 				end
-				# do i need to kill this thread?
       end
     end
   end
