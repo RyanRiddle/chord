@@ -254,28 +254,33 @@ class Node
   end
 
   def transfer_keys(n)
-    r = OpenClosedInterval.new(@id, n.id)
-    transfers = {}
-    
-    @data.each do |hash, kvpairs|
-      if r.contains? hash
-        transfers[hash] = kvpairs
-        @data.delete hash
-      end
-    end
-
-    transfers.each do |hash, kvpairs|
-			kvpairs.each do |key, filename|
-				fullpath = File.join(@dir, filename)
-				f = File.open(fullpath, "r")
-				value = f.read
-				f.close
-
-				File.delete fullpath
-
-				n.store(key, value)
+		if n.addr != @addr
+			r = OpenClosedInterval.new(@id, n.id)
+			transfers = {}
+			
+			@data.each do |hash, kvpairs|
+				if r.contains? hash
+					transfers[hash] = kvpairs
+				end
 			end
-    end
+
+			transfers.each do |hash, kvpairs|
+				@data.delete hash
+				kvpairs.each do |key, filename|
+					fullpath = File.join(@dir, filename)
+					if not key or not File.exist? fullpath
+						next
+					end
+					f = File.open(fullpath, "r")
+					value = f.read
+					f.close
+
+					File.delete fullpath
+
+					n.store(key, value)
+				end
+			end
+		end
   end
 
   def notify(n)
