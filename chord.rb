@@ -17,6 +17,8 @@ class Node
 		@dir = File.absolute_path dir
 		if not Dir.exist? @dir
 			Dir.mkdir @dir
+		else
+			read_from_disk
 		end
 
 		@addr = addr
@@ -32,6 +34,20 @@ class Node
     end
     @successor_list = Array.new NUM_ADJACENT
   end
+
+	def read_from_disk
+		Dir.foreach @dir do |filename|
+			tokens = filename.split "_"
+			hash = tokens[0].to_i
+			key = tokens[1]
+			
+			if @data[hash].nil?
+				@data[hash] = {key=>filename}
+			else
+				@data[hash][key] = filename
+			end	 
+		end
+	end
 
   def print_fingers
     @finger.each do |x|
@@ -176,7 +192,7 @@ class Node
 
     stabilize_thread = Thread.new do
       while true
-        sleep 1
+        sleep 2
         stabilize()
         fix_fingers()
       end
@@ -269,11 +285,20 @@ class Node
   end
 
   def fix_fingers(i=nil)
-    if i.nil?
-      i = Random.rand(M)
+    if not i.nil?
+      @i = i 
+		else
+			@i = 0 if @i.nil?
+			@i = (@i + 1) % M
     end
     
-    @finger[i].noderef = find_successor(@finger[i].start)
+    @finger[@i].noderef = find_successor(@finger[@i].start)
+		
+		r = OpenClosedInterval.new @finger[@i].start, @finger[@i].noderef.id
+		while r.contains? @finger[(@i+1) % M].start
+			@finger[(@i+1) % M].noderef = @finger[@i].noderef
+			@i = (@i + 1) % M
+		end
   end
 
   # finds the node whose id is equal to or greater than key
@@ -377,7 +402,11 @@ class Node
 			end	
     else
       n = closest_preceding_finger h
-			n.successor
+			if n == @predecessor
+				successor
+			else
+				n.successor
+			end
     end
   end
 end

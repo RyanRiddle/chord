@@ -16,7 +16,7 @@ class NodeReference
 	def connect
 		begin
 			s = TCPSocket.new(@addr, @port)
-		rescue Errno::ECONNREFUSED
+		rescue Errno::ECONNREFUSED => e
 			nil
 		end
 	end
@@ -67,7 +67,7 @@ class NodeReference
 		s = connect
 		if not s.nil?
 			s.puts("FIND SUCCESSOR #{key}\n")
-			response = s.gets
+			response = s.gets.chomp
 			unless response.nil?
 				response = response.chomp
 				s.close
