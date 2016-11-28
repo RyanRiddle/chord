@@ -36,6 +36,9 @@ class Node
 	def read_from_disk
 		Dir.foreach @dir do |filename|
 			tokens = filename.split "_"
+			if tokens.count < 2
+				next
+			end
 			hash = tokens[0].to_i
 			key = tokens[1]
 			
