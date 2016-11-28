@@ -252,7 +252,6 @@ class Node
   end
 
   def transfer_keys(n)
-		sleep 60		# sleep to make sure we are not transfering too much during initial setup
 		n = @predecessor
 		if n.addr != @addr
 			puts "transferring..."
