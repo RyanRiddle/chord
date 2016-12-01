@@ -203,7 +203,8 @@ class Node
 			local_addr = Socket.ip_address_list.find do |ip|
 				ip.ipv4? and not ip.ipv4_loopback?
 			end
-      server = TCPServer.new(local_addr.getnameinfo[0], @port)
+      #server = TCPServer.new(local_addr.getnameinfo[0], @port)
+      server = TCPServer.new("localhost", @port)
       loop do
 				Thread.start(server.accept) do |s|
 					handle_request s

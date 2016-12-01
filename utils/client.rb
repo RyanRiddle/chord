@@ -1,3 +1,21 @@
+#######################################################################
+# This script is a simple client for the DHT.  Here's how you use it...
+# connect <address> <port> - Establishes a connection to a node in the
+# DHT.
+# get <key> - Retrieves the value associated with <key> from the DHT
+# and prints it to the console.
+# itget <key> - Retrieves the value associated with <key> from the DHT
+# and prints the address and port of each node that is visited in the 
+# network.
+# map - Crawls the network going from one node to the next, printing
+# the address and port of each node along the way.  Outputs script.html
+# that can be used to visualize the network.
+# map request <key> - A combination of map and itget.  script.html
+# includes a visualization of the path taken to find the data.
+# quit - quits the program.
+# help - shows this information.
+#######################################################################
+
 #!/usr/bin/ruby
 
 require_relative 'lib/node_reference'
@@ -148,6 +166,23 @@ def map args
 	end
 end
 
+def help
+	puts "This script is a simple client for the DHT.  Here's how you use it..."
+	puts "connect <address> <port> - Establishes a connection to a node in the DHT."
+	puts "get <key> - Retrieves the value associated with <key> from the DHT"
+	puts "and prints it to the console."
+	puts "itget <key> - Retrieves the value associated with <key> from the DHT"
+	puts "and prints the address and port of each node that is visited in the"
+	puts "network."
+	puts "map - Crawls the network going from one node to the next, printing"
+	puts "the address and port of each node along the way.  Outputs script.html"
+	puts "that can be used to visualize the network."
+	puts "map request <key> - A combination of map and itget.  script.html"
+	puts "includes a visualization of the path taken to find the data."
+	puts "quit - quits the program."
+	puts "help - shows this information."
+end
+
 def parse command
 	f, *args = command.split
 	return f, args
@@ -163,7 +198,9 @@ def execute command
 	elsif f == "get"
 		get args.join " "
 	elsif f == "map"
-			map args
+		map args
+	elsif f == "help"
+		help
 	elsif f == "quit"
 		exit
 	else
